@@ -15,6 +15,11 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
+def add_and_commit(item, session):
+    session.add(item)
+    session.commit()
+
+
 class WebServerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
@@ -36,6 +41,50 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 self.wfile.write(message.encode())
                 LOGGER.info(message)
 
+            if self.path.endswith("/polls/new"):
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                message = "<html><body>"
+                message += """
+                <form action="/polls/new" method="post" enctype="multipart/form-data">
+                    Poll title: <input type="text" name="poll_name"><br>
+                    Description: <input type="text" name="description"><br>
+                    Choices (comma separated): <input type="text" name="choices"><br> 
+                    <input type="submit" value="Submit">
+                </form> 
+                """
+                message += "</body></html>"
+                self.wfile.write(message.encode())
+                LOGGER.info(message)
+        except IOError:
+            self.send_error(404, 'File not found {}'.format(self.path))
+
+    def do_POST(self):
+        try:
+            if self.path.endswith("polls/new"):
+                ctype, pdict = cgi.parse_header(
+                    self.headers.get('Content-type'))
+                pdict['boundary'] = bytes(pdict['boundary'], 'utf-8')
+                if ctype == 'multipart/form-data':
+                    fields = cgi.parse_multipart(self.rfile, pdict)
+                    poll_name = fields.get('poll_name')[0].decode()
+                    poll_description = fields.get('description')[0].decode()
+                    choices = fields.get('choices')[0].decode()
+                LOGGER.info(poll_name)
+                category = session.query(Category).filter_by(
+                    name='General').one()
+                poll = Poll(title=poll_name,
+                            description=poll_description,
+                            category=category)
+                add_and_commit(poll, session)
+                for choice in choices.split(','):
+                    add_and_commit(Choice(name=choice.strip(), poll=poll),
+                                   session)
+                self.send_response(301)
+                self.send_header('Content-type', 'text/html')
+                self.send_header('Location', '/polls')
+                self.end_headers()
 
         except IOError:
             self.send_error(404, 'File not found {}'.format(self.path))
