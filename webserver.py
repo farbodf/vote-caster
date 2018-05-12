@@ -42,23 +42,55 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        message = "<html><body>"
+        message = """
+        <html><body>
+        <p><a href='/polls/new'>Add a new poll</a></p>
+        """
         polls = session.query(Poll).all()
         for poll in polls:
-            message += "<p>{}<br>{}<br>".format(poll.title,
-                                                poll.description)
+            message += "<p><a href='/polls/{}/poll'>{}</a><br>{}<br>".format(
+                poll.id,
+                poll.title,
+                poll.description
+            )
             choices = session.query(Choice).filter_by(poll_id=poll.id)
             for choice in choices:
                 message += "<a href=''>{}</a> : {}<br>".format(
                     choice.name,
                     choice.count
                 )
-            message += "<br><a href='/polls/{}/edit'>Edit</a>".format(poll.id)
+            message += "<a href='/polls/{}/edit'>Edit</a>".format(poll.id)
             message += ", <a href='/polls/{}/delete'>Delete</a>".format(poll.id)
             message += "</p>"
         message += "</body></html>"
         self.wfile.write(message.encode())
         LOGGER.info(message)
+
+    def show_poll_get(self):
+        LOGGER.info("HERE")
+        poll_id = self.path.split("/")[-2]
+        poll = session.query(Poll).filter_by(id=poll_id).one()
+        if poll:
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            choices = session.query(Choice).filter_by(poll_id=poll_id).all()
+            message = f"""
+            <html><body>
+                <h2>{poll.title}</h2>
+                <p>{poll.description}</p>
+                <p>
+            """
+            for choice in choices:
+                message += "<a href=''>{}</a> : {}<br>".format(
+                    choice.name,
+                    choice.count
+                )
+            message += "</p><a href='/polls/{}/edit'>Edit</a>".format(poll.id)
+            message += ", <a href='/polls/{}/delete'>Delete</a>".format(poll.id)
+        message += "</body></html>"
+        self.wfile.write(message.encode())
+
 
     def create_new_poll_post(self):
         ctype, pdict = cgi.parse_header(
@@ -170,8 +202,11 @@ class WebServerHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            if self.path.endswith("/polls"):
+            if self.path.endswith("/polls") or self.path == "/":
                 self.show_polls_get()
+
+            if self.path.endswith("/poll"):
+                self.show_poll_get()
 
             if self.path.endswith("/polls/new"):
                 self.create_new_poll_get()
