@@ -84,6 +84,41 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.send_header('Location', '/polls')
         self.end_headers()
 
+    def edit_poll_post(self):
+        poll_id = self.path.split('/')[-2]
+        poll = session.query(Poll).filter_by(id=poll_id).one()
+        if poll:
+            ctype, pdict = cgi.parse_header(
+                self.headers.get('Content-type')
+            )
+            pdict['boundary'] = bytes(pdict['boundary'], 'utf-8')
+            if ctype == 'multipart/form-data':
+                fields = cgi.parse_multipart(self.rfile, pdict)
+                poll_name = fields.get('poll_name')[0].decode()
+                description = fields.get('description')[0].decode()
+                if poll_name:
+                    poll.title = poll_name
+                    add_and_commit(poll, session)
+                if description:
+                    poll.description = description
+                    add_and_commit(poll, session)
+                choices = session.query(Choice).filter_by(poll_id=poll_id).all()
+                for choice in choices:
+                    name = fields.get(str(choice.id))[0].decode()
+                    if name:
+                        choice.name = name
+                        add_and_commit(choice, session)
+                new_choices = fields.get('choices')[0].decode()
+                if new_choices:
+                    choices = [c.strip() for c in new_choices.split(",")]
+                    for choice in choices:
+                        add_and_commit(Choice(name=choice, poll=poll))
+            self.send_response(301)
+            self.send_header('Content-type', 'text/html')
+            self.send_header('Location', '/polls')
+            self.end_headers()
+
+
     def edit_poll_get(self):
         poll_id = self.path.split("/")[-2]
         poll = session.query(Poll).filter_by(id=poll_id).one()
@@ -107,7 +142,7 @@ class WebServerHandler(BaseHTTPRequestHandler):
             message += """
             <br>
             Add more choices (comma separated): <input type="text" name="choices"><br>
-                    <input type="submit" value="Edit">
+                    <input type="submit" value="Confirm">
                 </form>
             </body></html>
             """
@@ -154,6 +189,12 @@ class WebServerHandler(BaseHTTPRequestHandler):
         try:
             if self.path.endswith("polls/new"):
                 self.create_new_poll_post()
+
+            if self.path.endswith("/edit"):
+                self.edit_poll_post()
+
+            if self.path.endswith("/delete"):
+                self.delete_poll_post()
 
         except IOError:
             self.send_error(404, 'File not found {}'.format(self.path))
