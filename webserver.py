@@ -55,7 +55,13 @@ class WebServerHandler(BaseHTTPRequestHandler):
             )
             choices = session.query(Choice).filter_by(poll_id=poll.id)
             for choice in choices:
-                message += "<a href=''>{}</a> : {}<br>".format(
+                message += """
+                    <form action="/polls/{}/{}/choice" method="post" enctype="multipart/form-data"> 
+                    <input type="submit" value="{}: {}">
+                    </form>
+                    """.format(
+                    poll.id,
+                    choice.id,
                     choice.name,
                     choice.count
                 )
@@ -82,7 +88,13 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 <p>
             """
             for choice in choices:
-                message += "<a href=''>{}</a> : {}<br>".format(
+                message += """
+                    <form action="/poll/{}/{}/choice" method="post" enctype="multipart/form-data"> 
+                    <input type="submit" value="{}: {}">
+                    </form>
+                    """.format(
+                    poll_id,
+                    choice.id,
                     choice.name,
                     choice.count
                 )
@@ -115,6 +127,21 @@ class WebServerHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.send_header('Location', '/polls')
         self.end_headers()
+
+    def poll_vote_post(self):
+        poll_id = self.path.split("/")[-3]
+        choice_id = self.path.split("/")[-2]
+        choice = session.query(Choice).filter_by(id=choice_id).one()
+        if choice:
+            choice.count += 1
+            add_and_commit(choice, session)
+            self.send_response(301)
+            self.send_header('Content-type', 'text/html')
+            if 'polls' in self.path:
+                self.send_header('Location', '/polls')
+            else:
+                self.send_header('Location', f'/{poll_id}/poll')
+            self.end_headers()
 
     def edit_poll_post(self):
         poll_id = self.path.split('/')[-2]
@@ -240,6 +267,9 @@ class WebServerHandler(BaseHTTPRequestHandler):
 
             if self.path.endswith("/delete"):
                 self.delete_poll_post()
+
+            if self.path.endswith("/choice"):
+                self.poll_vote_post()
 
         except IOError:
             self.send_error(404, 'File not found {}'.format(self.path))
