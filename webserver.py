@@ -150,6 +150,16 @@ class WebServerHandler(BaseHTTPRequestHandler):
             self.send_header('Location', '/polls')
             self.end_headers()
 
+    def delete_poll_post(self):
+        poll_id = self.path.split("/")[-2]
+        poll = session.query(Poll).filter_by(id=poll_id).one()
+        if poll:
+            session.delete(poll)
+            session.commit()
+            self.send_response(301)
+            self.send_header('Content-type', 'text/html')
+            self.send_header('Location', '/polls')
+            self.end_headers()
 
     def edit_poll_get(self):
         poll_id = self.path.split("/")[-2]
