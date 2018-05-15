@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database_setup import Category, Poll, Choice, Base
 
+from database_utils.database_setup import Category, Poll, Choice, Base
 
 engine = create_engine('sqlite:///votes.db')
 Base.metadata.bind = engine
