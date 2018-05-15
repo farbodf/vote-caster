@@ -1,2 +1,3 @@
 .idea
 **/votes.db
+**/__pycache__
