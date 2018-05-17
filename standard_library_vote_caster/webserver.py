@@ -183,6 +183,10 @@ class WebServerHandler(BaseHTTPRequestHandler):
         poll_id = self.path.split("/")[-2]
         poll = session.query(Poll).filter_by(id=poll_id).one()
         if poll:
+            choices = session.query(Choice).filter_by(poll_id=poll.id).all()
+            for choice in choices:
+                session.delete(choice)
+                session.commit()
             session.delete(poll)
             session.commit()
             self.send_response(301)
