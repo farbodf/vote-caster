@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vote Caster</title>
+</head>
+<body>
+
+    <form action="{{ url_for('create_poll') }}" method="post">
+        <p>Poll Title:
+            <input type="text" name="title" placeholder="Poll Title">
+        </p>
+        <p>Poll Description (optional):
+            <input type="text" name="description" placeholder="description">
+        </p>
+        <p> Write the poll's choices here, and separate them by a comma:
+            <input type="text" name="choices" placeholder="Choices, comma separated">
+        </p>
+        <input type="submit" value="create">
+    </form>
+</body>
+</html>
